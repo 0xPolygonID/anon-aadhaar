@@ -46,10 +46,6 @@ template ClaimRootBuilder(nLevels) {
 /// @input delimiterIndices Indices of delimiters (255) in the QR text data. 18 delimiters including photo
 /// @input signature RSA signature
 /// @input pubKey RSA public key (of the government)
-/// @input revealAgeAbove18 Flag to reveal age is above 18
-/// @input revealGender Flag to reveal extracted gender
-/// @input revealPinCode Flag to reveal extracted pin code
-/// @input revealState Flag to reveal extracted state
 /// @input nullifierSeed A random value used as an input to compute the nullifier; for example: applicationId, actionId
 /// @input public signalHash Any message to commit to (to make it part of the proof)
 /// @output pubkeyHash Poseidon hash of the RSA public key (after merging nearby chunks)
@@ -65,10 +61,6 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
     signal input delimiterIndices[18];
     signal input signature[k];
     signal input pubKey[k];
-    signal input revealAgeAbove18;
-    signal input revealGender;
-    signal input revealPinCode;
-    signal input revealState;
 
     // Public inputs
     signal input nullifierSeed;
@@ -133,19 +125,13 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
     qrDataExtractor.qrDataPaddedLength <== qrDataPaddedLength;
     qrDataExtractor.delimiterIndices <== delimiterIndices;
 
-    // Reveal extracted data
-    revealAgeAbove18 * (revealAgeAbove18 - 1) === 0;
-    revealGender * (revealGender - 1) === 0;
-    revealPinCode * (revealPinCode - 1) === 0;
-    revealState * (revealState - 1) === 0;
-
     timestamp <== qrDataExtractor.timestamp;
-    ageAbove18 <== revealAgeAbove18 * qrDataExtractor.ageAbove18; // Note: 0 does not necessarily mean age is below 18
-    gender <== revealGender * qrDataExtractor.gender;
-    pinCode <== revealPinCode * qrDataExtractor.pinCode;
-    state <== revealState * qrDataExtractor.state;
+    ageAbove18 <== qrDataExtractor.ageAbove18; // Note: 0 does not necessarily mean age is below 18
+    gender <== qrDataExtractor.gender;
+    pinCode <== qrDataExtractor.pinCode;
+    state <== qrDataExtractor.state;
 
-    // we need to keep the same siqunce as update keys
+    // we need to keep the same sequence as update keys
     var valuesToUpdate[10] = [
         ageAbove18, // ageAbove18
         qrDataExtractor.dateInteger, // birthday
