@@ -14,14 +14,13 @@ import {
   decompressByteArray,
   splitToWords,
   extractPhoto,
-  timestampToUTCUnix,
 } from '@anon-aadhaar/core'
 import fs from 'fs'
 import crypto from 'crypto'
 import assert from 'assert'
 import { buildPoseidon } from 'circomlibjs'
 import { testQRData } from '../assets/dataInput.json'
-import { bytesToIntChunks, padArrayWithZeros, bigIntsToString } from './util'
+import { bytesToIntChunks, padArrayWithZeros } from './util'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config()
 import { newMemEmptyTrie } from 'circomlibjs'

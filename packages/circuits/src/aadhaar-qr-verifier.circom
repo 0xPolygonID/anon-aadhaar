@@ -134,7 +134,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
         issuer // issuer
     ];
 
-    component c = ClaimRootBuilder(10);
+    component c = ClaimRootBuilder(nLevels);
     c.templateRoot <== templateRoot;
     c.siblings <== siblings;
     c.keys <== keysToUpdate;
