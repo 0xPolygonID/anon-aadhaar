@@ -104,7 +104,7 @@ async function prepareTestData() {
     const value = tree.F.e(leafs[i+1]);
     await tree.insert(key, value);
   }
-  const oldRoot = tree.F.toObject(tree.root);
+  const templateRoot = tree.F.toObject(tree.root);
 
   const constLefasUpdate = [
     "10647195490133279025507176104314518051617223585635435645675479671394436328629", 1,  // ageAbove18
@@ -143,7 +143,7 @@ async function prepareTestData() {
     issuanceDate: "1734987189512228532",
     issuer: "12146166192964646439780403715116050536535442384123009131510511003232108502337",
 
-    oldRoot: oldRoot,
+    templateRoot: templateRoot,
     siblings: siblings
   }
 
@@ -224,37 +224,11 @@ describe('AadhaarVerifier', function () {
     assert(witness[2] == BigInt(poseidon.F.toString(nullifier)))
   })
 
-  it('should output timestamp of when data is generated', async () => {
-    const { inputs, decodedData } = await prepareTestData()
-
-    const witness = await circuit.calculateWitness(inputs)
-
-    // This is the time in the QR data above is 20190308114407437.
-    // 2019-03-08 11:44:07.437 rounded down to nearest hour is 2019-03-08 11:00:00.000
-    // Converting this IST to UTC gives 2019-03-08T05:30:00.000Z
-    const expectedTimestamp = timestampToUTCUnix(decodedData)
-
-    assert(witness[3] === BigInt(expectedTimestamp))
-  })
-
   it('should output extracted data if reveal is true', async () => {
     const { inputs } = await prepareTestData()
 
     const witness = await circuit.calculateWitness(inputs)
     await circuit.checkConstraints(witness);
-
-    // Age above 18
-    assert(Number(witness[4]) === 1)
-
-    // Gender
-    assert(bigIntsToString([witness[5]]) === 'M')
-
-    // Pin code
-    assert(Number(witness[6]) === 110051)
-
-    // State
-    assert(bigIntsToString([witness[7]]) === 'Delhi')
-
-    assert(witness[8] === BigInt("4230341195722595158824846810955105073061381863438730322129274755644729517884"));
+    assert(witness[3] === BigInt("4230341195722595158824846810955105073061381863438730322129274755644729517884"));
   })
 })

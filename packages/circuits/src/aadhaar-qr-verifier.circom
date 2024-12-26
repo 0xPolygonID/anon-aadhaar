@@ -9,7 +9,7 @@ include "./helpers/nullifier.circom";
 
 
 template ClaimRootBuilder(nLevels) {
-    signal input oldRoot;
+    signal input templateRoot;
     signal input siblings[10][nLevels];
     signal input keys[10];
     signal input values[10];
@@ -17,7 +17,7 @@ template ClaimRootBuilder(nLevels) {
     signal output newRoot;
 
     signal intermediate[11];
-    intermediate[0] <== oldRoot;
+    intermediate[0] <== templateRoot;
     
     component smt[10];
     for(var i = 0; i < 10; i++){
@@ -74,16 +74,11 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
     signal input issuer;
 
     // Iden3 merkle tree root inputs
-    signal input oldRoot;
+    signal input templateRoot;
     signal input siblings[10][nLevels];
 
     signal output pubkeyHash;
     signal output nullifier;
-    signal output timestamp;
-    signal output ageAbove18;
-    signal output gender;
-    signal output pinCode;
-    signal output state;
     signal output claimRoot;
 
     // keys to update
@@ -125,19 +120,13 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
     qrDataExtractor.qrDataPaddedLength <== qrDataPaddedLength;
     qrDataExtractor.delimiterIndices <== delimiterIndices;
 
-    timestamp <== qrDataExtractor.timestamp;
-    ageAbove18 <== qrDataExtractor.ageAbove18; // Note: 0 does not necessarily mean age is below 18
-    gender <== qrDataExtractor.gender;
-    pinCode <== qrDataExtractor.pinCode;
-    state <== qrDataExtractor.state;
-
     // we need to keep the same sequence as update keys
     var valuesToUpdate[10] = [
-        ageAbove18, // ageAbove18
+        qrDataExtractor.ageAbove18, // ageAbove18
         qrDataExtractor.dateInteger, // birthday
-        gender, // gender
-        pinCode, // pinCode
-        state, // state
+        qrDataExtractor.gender, // gender
+        qrDataExtractor.pinCode, // pinCode
+        qrDataExtractor.state, // state
         revocationNonce, // revocationNonce
         credentialStatusID, // credentialStatus.id
         credentialSubjectID, // credentialSubject.id
@@ -146,7 +135,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
     ];
 
     component c = ClaimRootBuilder(10);
-    c.oldRoot <== oldRoot;
+    c.templateRoot <== templateRoot;
     c.siblings <== siblings;
     c.keys <== keysToUpdate;
     c.values <== valuesToUpdate;
