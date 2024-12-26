@@ -2,10 +2,39 @@ pragma circom 2.1.9;
 
 include "circomlib/circuits/bitify.circom";
 include "circomlib/circuits/poseidon.circom";
+include "circomlib/circuits/smt/smtprocessor.circom";
 include "./helpers/signature.circom";
 include "./helpers/extractor.circom";
 include "./helpers/nullifier.circom";
 
+
+template ClaimRootBuilder(nLevels) {
+    signal input oldRoot;
+    signal input siblings[10][nLevels];
+    signal input keys[10];
+    signal input values[10];
+
+    signal output newRoot;
+
+    signal intermediate[11];
+    intermediate[0] <== oldRoot;
+    
+    component smt[10];
+    for(var i = 0; i < 10; i++){
+        smt[i] = SMTProcessor(nLevels);
+        smt[i].oldRoot <== intermediate[i];
+        smt[i].siblings <== siblings[i];
+        smt[i].oldKey <== keys[i];
+        smt[i].oldValue <== 0;
+        smt[i].isOld0 <== 0;
+        smt[i].newKey <== keys[i];
+        smt[i].newValue <== values[i];
+        smt[i].fnc <== [0, 1];
+        intermediate[i+1] <== smt[i].newRoot;
+    }
+
+    newRoot <== smt[9].newRoot;
+}
 
 /// @title AadhaarQRVerifier
 /// @notice This circuit verifies the Aadhaar QR data using RSA signature
@@ -30,7 +59,7 @@ include "./helpers/nullifier.circom";
 /// @output gender Gender 70(F) or 77(M); 0 if not revealed
 /// @output pinCode Pin code of the address as int; 0 if not revealed
 /// @output state State packed as int (reverse order); 0 if not revealed
-template AadhaarQRVerifier(n, k, maxDataLength) {
+template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
     signal input qrDataPadded[maxDataLength];
     signal input qrDataPaddedLength;
     signal input delimiterIndices[18];
@@ -45,6 +74,17 @@ template AadhaarQRVerifier(n, k, maxDataLength) {
     signal input nullifierSeed;
     signal input signalHash;
 
+    // Iden3 credentials input
+    signal input revocationNonce;
+    signal input credentialStatusID;
+    signal input credentialSubjectID;
+    signal input issuanceDate;
+    signal input issuer;
+
+    // Iden3 merkle tree root inputs
+    signal input oldRoot;
+    signal input siblings[10][nLevels];
+
     signal output pubkeyHash;
     signal output nullifier;
     signal output timestamp;
@@ -52,6 +92,21 @@ template AadhaarQRVerifier(n, k, maxDataLength) {
     signal output gender;
     signal output pinCode;
     signal output state;
+    signal output claimRoot;
+
+    // keys to update
+    var keysToUpdate[10] = [
+        10647195490133279025507176104314518051617223585635435645675479671394436328629, // ageAbove18
+        5213439259676021610106577921037707268541764175155543794420152605023181390139, // birthday
+        1479963091211635594734723538545884456894938414357497418097512533895772796527, // gender
+        19238944412824247341353086074402759833940010832364197352719874011476854540013, // pinCode
+        14522734804373614041942549305708452359006179872334741006179415532376146140639, // state
+        1763085948543522232029667616550496120517967703023484347613954302553484294902, // revocationNonce
+        11896622783611378286548274235251973588039499084629981048616800443645803129554, // credentialStatus.id
+        4792130079462681165428511201253235850015648352883240577315026477780493110675, // credentialSubject.id
+        8713837106709436881047310678745516714551061952618778897121563913918335939585, // issuanceDate
+        5940025296598751562822259677636111513267244048295724788691376971035167813215 // issuer
+    ];
 
 
     // Assert `qrDataPaddedLength` fits in `ceil(log2(maxDataLength))`
@@ -90,6 +145,26 @@ template AadhaarQRVerifier(n, k, maxDataLength) {
     pinCode <== revealPinCode * qrDataExtractor.pinCode;
     state <== revealState * qrDataExtractor.state;
 
+    // we need to keep the same siqunce as update keys
+    var valuesToUpdate[10] = [
+        ageAbove18, // ageAbove18
+        qrDataExtractor.dateInteger, // birthday
+        gender, // gender
+        pinCode, // pinCode
+        state, // state
+        revocationNonce, // revocationNonce
+        credentialStatusID, // credentialStatus.id
+        credentialSubjectID, // credentialSubject.id
+        issuanceDate, // issuanceDate
+        issuer // issuer
+    ];
+
+    component c = ClaimRootBuilder(10);
+    c.oldRoot <== oldRoot;
+    c.siblings <== siblings;
+    c.keys <== keysToUpdate;
+    c.values <== valuesToUpdate;
+    claimRoot <== c.newRoot;
 
     // Calculate nullifier
     signal photo[photoPackSize()] <== qrDataExtractor.photo;

@@ -293,6 +293,7 @@ template QRDataExtractor(maxDataLength) {
     signal output gender;
     signal output state;
     signal output pinCode;
+    signal output dateInteger;
     signal output photo[photoPackSize()];
 
     // Create `nDelimitedData` - same as `data` but each delimiter is replaced with n * 255
@@ -369,4 +370,10 @@ template QRDataExtractor(maxDataLength) {
     photoExtractor.startDelimiterIndex <== delimiterIndices[photoPosition() - 1];
     photoExtractor.endIndex <== qrDataPaddedLength - 1;
     photo <== photoExtractor.out;
+
+    // Return YYYYMMDD format for data integer representation
+    signal temp1, temp2;
+    temp1 <== timestampExtractor.year * 10000;
+    temp2 <== timestampExtractor.month * 100;
+    dateInteger <== temp1 + temp2 + timestampExtractor.day;
 }

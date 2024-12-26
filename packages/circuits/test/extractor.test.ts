@@ -67,16 +67,19 @@ describe('Extractor', function () {
     // Gender
     assert(bigIntsToString([witness[3]]) === 'M')
 
+    // State
+    assert(bigIntsToString([witness[4]]) === 'Delhi')
+
     // Pin code
     assert(Number(witness[5]) === 110051)
 
-    // State
-    assert(bigIntsToString([witness[4]]) === 'Delhi')
+    // Data of birth on integer format
+    assert(Number(witness[6]) === 20190308)
 
     // Photo
     // Reconstruction of the photo bytes from packed ints and compare each byte
     const photo = extractPhoto(Array.from(qrDataPadded), qrDataPaddedLen)
-    const photoWitness = bigIntChunksToByteArray(witness.slice(6, 6 + 32))
+    const photoWitness = bigIntChunksToByteArray(witness.slice(7, 7 + 32))
 
     assert(photoWitness.length === photo.bytes.length)
     for (let i = 0; i < photoWitness.length; i++) {
