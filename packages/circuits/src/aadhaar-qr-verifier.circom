@@ -10,17 +10,17 @@ include "./helpers/nullifier.circom";
 
 template ClaimRootBuilder(nLevels) {
     signal input templateRoot;
-    signal input siblings[10][nLevels];
-    signal input keys[10];
-    signal input values[10];
+    signal input siblings[9][nLevels];
+    signal input keys[9];
+    signal input values[9];
 
     signal output newRoot;
 
-    signal intermediate[11];
+    signal intermediate[10];
     intermediate[0] <== templateRoot;
     
-    component smt[10];
-    for(var i = 0; i < 10; i++){
+    component smt[9];
+    for(var i = 0; i < 9; i++){
         smt[i] = SMTProcessor(nLevels);
         smt[i].oldRoot <== intermediate[i];
         smt[i].siblings <== siblings[i];
@@ -33,7 +33,7 @@ template ClaimRootBuilder(nLevels) {
         intermediate[i+1] <== smt[i].newRoot;
     }
 
-    newRoot <== smt[9].newRoot;
+    newRoot <== smt[8].newRoot;
 }
 
 /// @title AadhaarQRVerifier
@@ -75,15 +75,15 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
 
     // Iden3 merkle tree root inputs
     signal input templateRoot;
-    signal input siblings[10][nLevels];
+    signal input siblings[9][nLevels];
 
     signal output pubkeyHash;
     signal output nullifier;
     signal output claimRoot;
 
     // keys to update
-    var keysToUpdate[10] = [
-        10647195490133279025507176104314518051617223585635435645675479671394436328629, // ageAbove18
+    var keysToUpdate[9] = [
+        // 10647195490133279025507176104314518051617223585635435645675479671394436328629, // ageAbove18
         5213439259676021610106577921037707268541764175155543794420152605023181390139, // birthday
         1479963091211635594734723538545884456894938414357497418097512533895772796527, // gender
         19238944412824247341353086074402759833940010832364197352719874011476854540013, // pinCode
@@ -121,8 +121,8 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
     qrDataExtractor.delimiterIndices <== delimiterIndices;
 
     // we need to keep the same sequence as update keys
-    var valuesToUpdate[10] = [
-        qrDataExtractor.ageAbove18, // ageAbove18
+    var valuesToUpdate[9] = [
+        // qrDataExtractor.ageAbove18, // ageAbove18
         qrDataExtractor.dateInteger, // birthday
         qrDataExtractor.gender, // gender
         qrDataExtractor.pinCode, // pinCode
