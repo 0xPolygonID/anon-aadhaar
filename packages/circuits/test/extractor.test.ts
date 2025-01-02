@@ -55,7 +55,7 @@ describe('Extractor', function () {
       delimiterIndices: delimiterIndices,
     })
 
-    // Timestamp
+    // Timestamp of signing
     assert(
       new Date(Number(witness[1]) * 1000).getTime() ===
         new Date('2019-03-08T05:30:00.000Z').getTime(),
@@ -74,7 +74,7 @@ describe('Extractor', function () {
     assert(Number(witness[5]) === 110051)
 
     // Data of birth on integer format
-    assert(Number(witness[6]) === 20190308)
+    assert(Number(witness[6]) === 19840101)
 
     // Photo
     // Reconstruction of the photo bytes from packed ints and compare each byte

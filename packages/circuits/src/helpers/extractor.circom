@@ -144,6 +144,10 @@ template AgeExtractor(maxDataLength) {
 
     signal output age;
     signal output nDelimitedDataShiftedToDob[maxDataLength];
+
+    signal output year;
+    signal output month;
+    signal output day;
     
     // Shift the data to the right to until the DOB index
     // We are not using SubArraySelector as the shifted data is an output
@@ -159,9 +163,9 @@ template AgeExtractor(maxDataLength) {
 
     // Convert DOB bytes to unix timestamp. 
     // Get year, month, name as int (DD-MM-YYYY format and starts from shiftedBytes[0])
-    signal year <== DigitBytesToInt(4)([shiftedBytes[7], shiftedBytes[8], shiftedBytes[9], shiftedBytes[10]]);
-    signal month <== DigitBytesToInt(2)([shiftedBytes[4], shiftedBytes[5]]);
-    signal day <== DigitBytesToInt(2)([shiftedBytes[1], shiftedBytes[2]]);
+    year <== DigitBytesToInt(4)([shiftedBytes[7], shiftedBytes[8], shiftedBytes[9], shiftedBytes[10]]);
+    month <== DigitBytesToInt(2)([shiftedBytes[4], shiftedBytes[5]]);
+    day <== DigitBytesToInt(2)([shiftedBytes[1], shiftedBytes[2]]);
 
     // Completed age based on year value
     signal ageByYear <== currentYear - year - 1;
@@ -373,7 +377,7 @@ template QRDataExtractor(maxDataLength) {
 
     // Return YYYYMMDD format for data integer representation
     signal temp1, temp2;
-    temp1 <== timestampExtractor.year * 10000;
-    temp2 <== timestampExtractor.month * 100;
-    dateInteger <== temp1 + temp2 + timestampExtractor.day;
+    temp1 <== ageExtractor.year * 10000;
+    temp2 <== ageExtractor.month * 100;
+    dateInteger <== temp1 + temp2 + ageExtractor.day;
 }
