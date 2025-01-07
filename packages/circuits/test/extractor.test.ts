@@ -73,7 +73,7 @@ describe('Extractor', function () {
     // Pin code
     assert(Number(witness[5]) === 110051)
 
-    // Data of birth on integer format
+    // Date of birth on integer format
     assert(Number(witness[6]) === 19840101)
 
     // Photo

@@ -2,39 +2,10 @@ pragma circom 2.1.9;
 
 include "circomlib/circuits/bitify.circom";
 include "circomlib/circuits/poseidon.circom";
-include "circomlib/circuits/smt/smtprocessor.circom";
 include "./helpers/signature.circom";
 include "./helpers/extractor.circom";
 include "./helpers/nullifier.circom";
-
-
-template ClaimRootBuilder(nLevels) {
-    signal input templateRoot;
-    signal input siblings[9][nLevels];
-    signal input keys[9];
-    signal input values[9];
-
-    signal output newRoot;
-
-    signal intermediate[10];
-    intermediate[0] <== templateRoot;
-    
-    component smt[9];
-    for(var i = 0; i < 9; i++){
-        smt[i] = SMTProcessor(nLevels);
-        smt[i].oldRoot <== intermediate[i];
-        smt[i].siblings <== siblings[i];
-        smt[i].oldKey <== keys[i];
-        smt[i].oldValue <== 0;
-        smt[i].isOld0 <== 0;
-        smt[i].newKey <== keys[i];
-        smt[i].newValue <== values[i];
-        smt[i].fnc <== [0, 1];
-        intermediate[i+1] <== smt[i].newRoot;
-    }
-
-    newRoot <== smt[8].newRoot;
-}
+include "./claimRootBuilder.circom";
 
 /// @title AadhaarQRVerifier
 /// @notice This circuit verifies the Aadhaar QR data using RSA signature
@@ -55,7 +26,7 @@ template ClaimRootBuilder(nLevels) {
 /// @output gender Gender 70(F) or 77(M); 0 if not revealed
 /// @output pinCode Pin code of the address as int; 0 if not revealed
 /// @output state State packed as int (reverse order); 0 if not revealed
-template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
+template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     signal input qrDataPadded[maxDataLength];
     signal input qrDataPaddedLength;
     signal input delimiterIndices[18];
@@ -75,14 +46,14 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
 
     // Iden3 merkle tree root inputs
     signal input templateRoot;
-    signal input siblings[9][nLevels];
+    signal input siblings[smtChanges][nLevels];
 
     signal output pubkeyHash;
     signal output nullifier;
     signal output claimRoot;
 
     // keys to update
-    var keysToUpdate[9] = [
+    var keysToUpdate[smtChanges] = [
         // 10647195490133279025507176104314518051617223585635435645675479671394436328629, // ageAbove18
         5213439259676021610106577921037707268541764175155543794420152605023181390139, // birthday
         1479963091211635594734723538545884456894938414357497418097512533895772796527, // gender
@@ -121,7 +92,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
     qrDataExtractor.delimiterIndices <== delimiterIndices;
 
     // we need to keep the same sequence as update keys
-    var valuesToUpdate[9] = [
+    var valuesToUpdate[smtChanges] = [
         // qrDataExtractor.ageAbove18, // ageAbove18
         qrDataExtractor.dateInteger, // birthday
         qrDataExtractor.gender, // gender
@@ -134,7 +105,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels) {
         issuer // issuer
     ];
 
-    component c = ClaimRootBuilder(nLevels);
+    component c = ClaimRootBuilder(nLevels, smtChanges);
     c.templateRoot <== templateRoot;
     c.siblings <== siblings;
     c.keys <== keysToUpdate;
