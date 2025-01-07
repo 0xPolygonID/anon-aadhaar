@@ -82,7 +82,7 @@ async function prepareTestData() {
   const treeLevels = 10;
   const tree = await newMemEmptyTrie();
   // key-value pairs to build the credential template
-  const leafs = [
+  const template = [
     "4809579517396073186705705159186899409599314609122482090560534255195823961763", "2038038677412689124034084719683107814279606773706261227437666149072023632255", // credentialSubjectType
     "1876843462791870928827702802899567513539510253808198232854545117818238902280", "6863952743872184967730390635778205663409140607467436963978966043239919204962", // credentialSchemaType
     "12891444986491254085560597052395677934694594587847693550621945641098238258096", "870222225577550446142292957325790690140780476504858538425256779240825462837", // credentialStatusType
@@ -100,14 +100,14 @@ async function prepareTestData() {
     "8713837106709436881047310678745516714551061952618778897121563913918335939585", "0", // issuanceDate
     "5940025296598751562822259677636111513267244048295724788691376971035167813215", "0" // issuer
   ];
-  for (let i=0; i<leafs.length; i+=2) {
-    const key = tree.F.e(leafs[i]);
-    const value = tree.F.e(leafs[i+1]);
+  for (let i=0; i<template.length; i+=2) {
+    const key = tree.F.e(template[i]);
+    const value = tree.F.e(template[i+1]);
     await tree.insert(key, value);
   }
   const templateRoot = tree.F.toObject(tree.root);
 
-  const constLeafsUpdate = [
+  const updateTemplate = [
     // "10647195490133279025507176104314518051617223585635435645675479671394436328629", 1,  // ageAbove18
     "5213439259676021610106577921037707268541764175155543794420152605023181390139", 19840101, // birthday
     "1479963091211635594734723538545884456894938414357497418097512533895772796527", 77, // gender
@@ -120,9 +120,9 @@ async function prepareTestData() {
     "5940025296598751562822259677636111513267244048295724788691376971035167813215", "12146166192964646439780403715116050536535442384123009131510511003232108502337" // issuer
   ]
   const siblings = [[]];
-  for (let i=0; i<constLeafsUpdate.length; i+=2) {
-    const key = tree.F.e(constLeafsUpdate[i]);
-    const value = tree.F.e(constLeafsUpdate[i+1]);
+  for (let i=0; i<updateTemplate.length; i+=2) {
+    const key = tree.F.e(updateTemplate[i]);
+    const value = tree.F.e(updateTemplate[i+1]);
     const res = await tree.update(key, value);
     for (let i=0; i<res.siblings.length; i++) res.siblings[i] = tree.F.toObject(res.siblings[i]);
     while (res.siblings.length<treeLevels) res.siblings.push(0);
