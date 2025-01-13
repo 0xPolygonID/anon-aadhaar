@@ -1,11 +1,11 @@
 pragma circom 2.1.9;
 
-include "circomlib/circuits/bitify.circom";
 include "circomlib/circuits/poseidon.circom";
 include "./helpers/signature.circom";
 include "./helpers/extractor.circom";
 include "./helpers/nullifier.circom";
 include "./claimRootBuilder.circom";
+include "./claimV0Builder.circom";
 
 /// @title AadhaarQRVerifier
 /// @notice This circuit verifies the Aadhaar QR data using RSA signature
@@ -43,6 +43,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     signal input credentialSubjectID;
     signal input issuanceDate;
     signal input issuer;
+    signal input userID;
 
     // Iden3 merkle tree root inputs
     signal input templateRoot;
@@ -51,6 +52,8 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     signal output pubkeyHash;
     signal output nullifier;
     signal output claimRoot;
+    signal output hashIndex;
+    signal output hashValue;
 
     // keys to update
     var keysToUpdate[smtChanges] = [
@@ -119,4 +122,25 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     
     // Dummy square to prevent signal tampering (in rare cases where non-constrained inputs are ignored)
     signal signalHashSquare <== signalHash * signalHash;
+
+    // The value was calculated using the go-iden3-core library
+    var i0 = 11838043422440293315007254764009275008602;
+    component hI = Poseidon(4);
+    hI.inputs[0] <== i0;
+    hI.inputs[1] <== userID;
+    hI.inputs[2] <== claimRoot;
+    hI.inputs[3] <== 0;
+
+    component V0Calc = V0Calculator();
+    V0Calc.revocation <== revocationNonce;
+    V0Calc.expiration <== 0;
+
+    component hV = Poseidon(4);
+    hV.inputs[0] <== V0Calc.out;
+    hV.inputs[1] <== 0;
+    hV.inputs[2] <== 0;
+    hV.inputs[3] <== 0;
+
+    hashIndex <== hI.out;
+    hashValue <== hV.out;
 }
