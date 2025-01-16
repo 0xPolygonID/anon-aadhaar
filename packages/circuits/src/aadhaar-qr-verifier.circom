@@ -1,11 +1,32 @@
 pragma circom 2.1.9;
 
+include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/poseidon.circom";
 include "./helpers/signature.circom";
 include "./helpers/extractor.circom";
 include "./helpers/nullifier.circom";
 include "./claimRootBuilder.circom";
 include "./claimV0Builder.circom";
+
+template IntDiv(n) {
+  signal input in[2];
+  signal output out;
+
+  signal isZerp <== IsZero()(in[1]);
+  0 === isZerp;
+
+  var quot_hint = in[0] \ in[1];
+  var rem_hint = in[0] % in[1];
+  signal quot <-- quot_hint;
+  signal rem <-- rem_hint;
+
+  in[0] === quot * in[1] + rem;
+
+  signal rem_is_valid <== LessThan(n)([rem, in[1]]);
+  1 === rem_is_valid;
+
+  out <== quot;
+}
 
 /// @title AadhaarQRVerifier
 /// @notice This circuit verifies the Aadhaar QR data using RSA signature
@@ -42,6 +63,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     signal input credentialStatusID;
     signal input credentialSubjectID;
     signal input issuanceDate;
+    signal input expirationDate;
     signal input issuer;
     signal input userID;
 
@@ -65,6 +87,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
         1763085948543522232029667616550496120517967703023484347613954302553484294902, // revocationNonce
         11896622783611378286548274235251973588039499084629981048616800443645803129554, // credentialStatus.id
         4792130079462681165428511201253235850015648352883240577315026477780493110675, // credentialSubject.id
+        13483382060079230067188057675928039600565406666878111320562435194759310415773, // expirationDate
         8713837106709436881047310678745516714551061952618778897121563913918335939585, // issuanceDate
         5940025296598751562822259677636111513267244048295724788691376971035167813215 // issuer
     ];
@@ -104,6 +127,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
         revocationNonce, // revocationNonce
         credentialStatusID, // credentialStatus.id
         credentialSubjectID, // credentialSubject.id
+        expirationDate, // expirationDate
         issuanceDate, // issuanceDate
         issuer // issuer
     ];
@@ -124,16 +148,20 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     signal signalHashSquare <== signalHash * signalHash;
 
     // The value was calculated using the go-iden3-core library
-    var i0 = 11838043422440293315007254764009275008602;
+    var i0 = 14560302357807801022714251623463420700250;
     component hI = Poseidon(4);
     hI.inputs[0] <== i0;
     hI.inputs[1] <== userID;
     hI.inputs[2] <== claimRoot;
     hI.inputs[3] <== 0;
 
+    component div = IntDiv(32);
+    div.in[0] <== expirationDate;
+    div.in[1] <== 1000000000;
+
     component V0Calc = V0Calculator();
     V0Calc.revocation <== revocationNonce;
-    V0Calc.expiration <== 0;
+    V0Calc.expiration <== div.out;
 
     component hV = Poseidon(4);
     hV.inputs[0] <== V0Calc.out;
