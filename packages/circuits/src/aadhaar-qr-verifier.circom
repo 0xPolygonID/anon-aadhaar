@@ -1,32 +1,11 @@
 pragma circom 2.1.9;
 
-include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/poseidon.circom";
 include "./helpers/signature.circom";
 include "./helpers/extractor.circom";
 include "./helpers/nullifier.circom";
 include "./claimRootBuilder.circom";
 include "./claimV0Builder.circom";
-
-template IntDiv(n) {
-  signal input in[2];
-  signal output out;
-
-  signal isZerp <== IsZero()(in[1]);
-  0 === isZerp;
-
-  var quot_hint = in[0] \ in[1];
-  var rem_hint = in[0] % in[1];
-  signal quot <-- quot_hint;
-  signal rem <-- rem_hint;
-
-  in[0] === quot * in[1] + rem;
-
-  signal rem_is_valid <== LessThan(n)([rem, in[1]]);
-  1 === rem_is_valid;
-
-  out <== quot;
-}
 
 /// @title AadhaarQRVerifier
 /// @notice This circuit verifies the Aadhaar QR data using RSA signature
@@ -127,7 +106,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
         revocationNonce, // revocationNonce
         credentialStatusID, // credentialStatus.id
         credentialSubjectID, // credentialSubject.id
-        expirationDate, // expirationDate
+        expirationDate * 1000000000, // expirationDate
         issuanceDate, // issuanceDate
         issuer // issuer
     ];
@@ -155,13 +134,9 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     hI.inputs[2] <== claimRoot;
     hI.inputs[3] <== 0;
 
-    component div = IntDiv(32);
-    div.in[0] <== expirationDate;
-    div.in[1] <== 1000000000;
-
     component V0Calc = V0Calculator();
     V0Calc.revocation <== revocationNonce;
-    V0Calc.expiration <== div.out;
+    V0Calc.expiration <== expirationDate;
 
     component hV = Poseidon(4);
     hV.inputs[0] <== V0Calc.out;
