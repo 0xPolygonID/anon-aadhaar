@@ -41,10 +41,9 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     signal input revocationNonce;
     signal input credentialStatusID;
     signal input credentialSubjectID;
-    signal input issuanceDate;
-    signal input expirationDate;
     signal input issuer;
     signal input userID;
+    signal input expirationTime;
 
     // Iden3 merkle tree root inputs
     signal input templateRoot;
@@ -52,9 +51,10 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
 
     signal output pubkeyHash;
     signal output nullifier;
-    signal output claimRoot;
     signal output hashIndex;
     signal output hashValue;
+    signal output issuanceDate;
+    signal output expirationDate;
 
     // keys to update
     var keysToUpdate[smtChanges] = [
@@ -96,6 +96,15 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     qrDataExtractor.qrDataPaddedLength <== qrDataPaddedLength;
     qrDataExtractor.delimiterIndices <== delimiterIndices;
 
+
+    // use the time of signing as the date of issue
+    issuanceDate <== qrDataExtractor.timestamp;
+    expirationDate <== issuanceDate + expirationTime;
+    /*
+        expirationDate and issuanceDate represent the timestamp in seconds. 
+        The Merkalization library works with timestamps in nanoseconds. 
+        We need to multiply expirationDate and issuanceDate by 1,000,000,000 to get the timestamp in nanoseconds
+    */
     // we need to keep the same sequence as update keys
     var valuesToUpdate[smtChanges] = [
         // qrDataExtractor.ageAbove18, // ageAbove18
@@ -107,10 +116,11 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
         credentialStatusID, // credentialStatus.id
         credentialSubjectID, // credentialSubject.id
         expirationDate * 1000000000, // expirationDate
-        issuanceDate, // issuanceDate
+        issuanceDate * 1000000000, // issuanceDate
         issuer // issuer
     ];
 
+    signal claimRoot;
     component c = ClaimRootBuilder(nLevels, smtChanges);
     c.templateRoot <== templateRoot;
     c.siblings <== siblings;
