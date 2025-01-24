@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 
 # default dir
 BUILD_DIR="$(pwd)/build"

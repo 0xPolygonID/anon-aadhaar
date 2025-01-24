@@ -14,16 +14,16 @@ import {
   decompressByteArray,
   splitToWords,
   extractPhoto,
-  timestampToUTCUnix,
 } from '@anon-aadhaar/core'
 import fs from 'fs'
 import crypto from 'crypto'
 import assert from 'assert'
 import { buildPoseidon } from 'circomlibjs'
 import { testQRData } from '../assets/dataInput.json'
-import { bytesToIntChunks, padArrayWithZeros, bigIntsToString } from './util'
+import { bytesToIntChunks, padArrayWithZeros } from './util'
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 require('dotenv').config()
+import { newMemEmptyTrie } from 'circomlibjs'
 
 let testAadhaar = true
 let QRData: string = testQRData
@@ -40,7 +40,7 @@ const getCertificate = (_isTest: boolean) => {
   return _isTest ? 'testPublicKey.pem' : 'uidai_offline_publickey_26022021.cer'
 }
 
-function prepareTestData() {
+async function prepareTestData() {
   const qrDataBytes = convertBigIntToByteArray(BigInt(QRData))
   const decodedData = decompressByteArray(qrDataBytes)
 
@@ -79,6 +79,58 @@ function prepareTestData() {
       ),
   )
 
+  const treeLevels = 10;
+  const tree = await newMemEmptyTrie();
+  // key-value pairs to build the credential template
+  const template = [
+    "4809579517396073186705705159186899409599314609122482090560534255195823961763", "2038038677412689124034084719683107814279606773706261227437666149072023632255", // credentialSubjectType
+    "1876843462791870928827702802899567513539510253808198232854545117818238902280", "6863952743872184967730390635778205663409140607467436963978966043239919204962", // credentialSchemaType
+    "12891444986491254085560597052395677934694594587847693550621945641098238258096", "870222225577550446142292957325790690140780476504858538425256779240825462837", // credentialStatusType
+    "14122086068848155444790679436566779517121339700977110548919573157521629996400", "8932896889521641034417268999369968324098807262074941120983759052810017489370", // typeID1
+    "18943208076435454904128050626016920086499867123501959273334294100443438004188", "2038038677412689124034084719683107814279606773706261227437666149072023632255", // typeDI2
+    "2282658739689398501857830040602888548545380116161185117921371325237897538551", "9033719693259832177439488944502349301386207418184651337843275979338597322540", // credentialSchemaID
+    // "10647195490133279025507176104314518051617223585635435645675479671394436328629", "0",  // ageAbove18
+    "5213439259676021610106577921037707268541764175155543794420152605023181390139", "0", // birthday
+    "1479963091211635594734723538545884456894938414357497418097512533895772796527", "0", // gender
+    "19238944412824247341353086074402759833940010832364197352719874011476854540013", "0", // pinCode
+    "14522734804373614041942549305708452359006179872334741006179415532376146140639", "0", // state
+    "1763085948543522232029667616550496120517967703023484347613954302553484294902", "0", // revocationNonce
+    "11896622783611378286548274235251973588039499084629981048616800443645803129554", "0", // credentialStatus.id
+    "4792130079462681165428511201253235850015648352883240577315026477780493110675", "0", // credentialSubject.id
+    "13483382060079230067188057675928039600565406666878111320562435194759310415773", "0", // expirationDate
+    "8713837106709436881047310678745516714551061952618778897121563913918335939585", "0", // issuanceDate
+    "5940025296598751562822259677636111513267244048295724788691376971035167813215", "0" // issuer
+  ];
+  for (let i=0; i<template.length; i+=2) {
+    const key = tree.F.e(template[i]);
+    const value = tree.F.e(template[i+1]);
+    await tree.insert(key, value);
+  }
+  const templateRoot = tree.F.toObject(tree.root);
+
+  const updateTemplate = [
+    // "10647195490133279025507176104314518051617223585635435645675479671394436328629", 1,  // ageAbove18
+    "5213439259676021610106577921037707268541764175155543794420152605023181390139", 19840101, // birthday
+    "1479963091211635594734723538545884456894938414357497418097512533895772796527", 77, // gender
+    "19238944412824247341353086074402759833940010832364197352719874011476854540013", 110051, // pinCode
+    "14522734804373614041942549305708452359006179872334741006179415532376146140639", 452723500356, // state
+    "1763085948543522232029667616550496120517967703023484347613954302553484294902", 954548273, // revocationNonce
+    "11896622783611378286548274235251973588039499084629981048616800443645803129554", "1018201307016207665766251269200564043201648522038849723333336008159229499355", // credentialStatus.id
+    "4792130079462681165428511201253235850015648352883240577315026477780493110675", "18026946060490633582346941999242407265442400633018823452652749104672360129751", // credentialSubject.id
+    "13483382060079230067188057675928039600565406666878111320562435194759310415773", "1567799640000000000", // expirationDate
+    "8713837106709436881047310678745516714551061952618778897121563913918335939585", "1552023000000000000", // issuanceDate
+    "5940025296598751562822259677636111513267244048295724788691376971035167813215", "12146166192964646439780403715116050536535442384123009131510511003232108502337" // issuer
+  ]
+  const siblings = [[]];
+  for (let i=0; i<updateTemplate.length; i+=2) {
+    const key = tree.F.e(updateTemplate[i]);
+    const value = tree.F.e(updateTemplate[i+1]);
+    const res = await tree.update(key, value);
+    for (let i=0; i<res.siblings.length; i++) res.siblings[i] = tree.F.toObject(res.siblings[i]);
+    while (res.siblings.length<treeLevels) res.siblings.push(0);
+    siblings.push(res.siblings);
+  }
+
   const inputs = {
     qrDataPadded: Uint8ArrayToCharArray(qrDataPadded),
     qrDataPaddedLength: qrDataPaddedLen,
@@ -87,10 +139,16 @@ function prepareTestData() {
     pubKey: splitToWords(pubKey, BigInt(121), BigInt(17)),
     nullifierSeed: 12345678,
     signalHash: 1001,
-    revealGender: 0,
-    revealAgeAbove18: 0,
-    revealPinCode: 0,
-    revealState: 0,
+    
+    revocationNonce: 954548273,
+    credentialStatusID: "1018201307016207665766251269200564043201648522038849723333336008159229499355",
+    credentialSubjectID: "18026946060490633582346941999242407265442400633018823452652749104672360129751",
+    userID: "23747161200420134456844951198264139815921171975208487354806063665905574145",
+    issuer: "12146166192964646439780403715116050536535442384123009131510511003232108502337",
+    expirationTime: "15776640",
+
+    templateRoot: templateRoot,
+    siblings: siblings
   }
 
   return {
@@ -125,13 +183,13 @@ describe('AadhaarVerifier', function () {
   })
 
   it('should generate witness for circuit with Sha256RSA signature', async () => {
-    const { inputs } = prepareTestData()
+    const { inputs } = await prepareTestData()
 
     await circuit.calculateWitness(inputs)
   })
 
   it('should output hash of pubkey', async () => {
-    const { inputs, pubKey } = prepareTestData()
+    const { inputs, pubKey } = await prepareTestData()
 
     const witness = await circuit.calculateWitness(inputs)
 
@@ -146,7 +204,7 @@ describe('AadhaarVerifier', function () {
   it('should compute nullifier correctly', async () => {
     const nullifierSeed = 12345678
 
-    const { inputs, qrDataPadded, qrDataPaddedLen } = prepareTestData()
+    const { inputs, qrDataPadded, qrDataPaddedLen } = await prepareTestData()
     inputs.nullifierSeed = nullifierSeed
 
     const witness = await circuit.calculateWitness(inputs)
@@ -170,55 +228,25 @@ describe('AadhaarVerifier', function () {
     assert(witness[2] == BigInt(poseidon.F.toString(nullifier)))
   })
 
-  it('should output timestamp of when data is generated', async () => {
-    const { inputs, decodedData } = prepareTestData()
-
-    const witness = await circuit.calculateWitness(inputs)
-
-    // This is the time in the QR data above is 20190308114407437.
-    // 2019-03-08 11:44:07.437 rounded down to nearest hour is 2019-03-08 11:00:00.000
-    // Converting this IST to UTC gives 2019-03-08T05:30:00.000Z
-    const expectedTimestamp = timestampToUTCUnix(decodedData)
-
-    assert(witness[3] === BigInt(expectedTimestamp))
-  })
-
   it('should output extracted data if reveal is true', async () => {
-    const { inputs } = prepareTestData()
-
-    inputs.revealAgeAbove18 = 1
-    inputs.revealGender = 1
-    inputs.revealPinCode = 1
-    inputs.revealState = 1
-
+    const { inputs } = await prepareTestData()
+    
     const witness = await circuit.calculateWitness(inputs)
-
-    // Age above 18
-    assert(Number(witness[4]) === 1)
-
-    // Gender
-    assert(bigIntsToString([witness[5]]) === 'M')
-
-    // Pin code
-    assert(Number(witness[6]) === 110051)
-
-    // State
-    assert(bigIntsToString([witness[7]]) === 'Delhi')
-  })
-
-  it('should not output extracted data if reveal is false', async () => {
-    const { inputs } = prepareTestData()
-
-    inputs.revealAgeAbove18 = 0
-    inputs.revealGender = 0
-    inputs.revealPinCode = 0
-    inputs.revealState = 0
-
-    const witness = await circuit.calculateWitness(inputs)
-
-    assert(Number(witness[4]) === 0)
-    assert(Number(witness[5]) === 0)
-    assert(Number(witness[6]) === 0)
-    assert(Number(witness[7]) === 0)
+    await circuit.checkConstraints(witness);
+    // compare the results with the results of the go-core library
+    assert(witness[3] === BigInt("8923283466217416480773874563455206948461339349268869321689548437848985912355"));
+    assert(witness[4] === BigInt("8516819303316620709053690018385969135966989083300174900628437254826157571292"));
+    // compare issuanceDate is equal to date from the QR code
+    assert(
+      new Date(Number(witness[5]) * 1000).getTime() ===
+        new Date('2019-03-08T05:30:00Z').getTime(),
+    );
+    assert(
+      new Date(Number(witness[6]) * 1000).getTime() ===
+        new Date('2019-09-06T19:54:00Z').getTime(),
+    );
+    // compare expirationDate is issuedDate + 6 months(~15776640 seconds)
+    const diff = witness[6] - witness[5];
+    assert(BigInt(diff) === BigInt(15776640));
   })
 })
