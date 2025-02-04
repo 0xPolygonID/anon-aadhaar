@@ -37,10 +37,10 @@ contract Verifier {
     uint256 constant gammax2 = 10857046999023057135944570762232829481370756359578518086990519993285655852781;
     uint256 constant gammay1 = 4082367875863433681332203403145435568316851327593401208105741076214120093531;
     uint256 constant gammay2 = 8495653923123431417604973247489272438418190587263600148770280649306958101930;
-    uint256 constant deltax1 = 6478079098059644794955489442566644082399176810697800518011658098436917498892;
-    uint256 constant deltax2 = 20533572760095723474804352875860557301543433536962581034908820797172322919807;
-    uint256 constant deltay1 = 21245386610249170698116968675572587783674227146275757743664420681565081182869;
-    uint256 constant deltay2 = 10386730275318211024690558808663725078794784230034325529798577332498117576072;
+    uint256 constant deltax1 = 5303085597955184730368225878328051752441940772297604445717923639007581776575;
+    uint256 constant deltax2 = 11441125087350399852426476299698126484517479447990581568348477228164593534271;
+    uint256 constant deltay1 = 6548917539008027838102486439438949993149368991671685950350305678907845498482;
+    uint256 constant deltay2 = 19384014299682973816263727010684741430305910863043172782679615577864434050559;
 
     
     uint256 constant IC0x = 17202926283251598065231527376648019777623479314208943009386780888674303306367;
@@ -73,6 +73,9 @@ contract Verifier {
     uint256 constant IC9x = 14814413443159487223931208725152452842059865722271281787555352116049799452733;
     uint256 constant IC9y = 17373462594478087004748496082618076921959076827177568046785097901984202939893;
     
+    uint256 constant IC10x = 9872112649314645178070944895144674985396981370598481657876135030735211298874;
+    uint256 constant IC10y = 2228491222560521151657122086349540624901664959348738442009496846304489869314;
+    
  
     // Memory data
     uint16 constant pVk = 0;
@@ -80,7 +83,7 @@ contract Verifier {
 
     uint16 constant pLastMem = 896;
 
-    function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[9] calldata _pubSignals) public view returns (bool) {
+    function verifyProof(uint[2] calldata _pA, uint[2][2] calldata _pB, uint[2] calldata _pC, uint[10] calldata _pubSignals) public view returns (bool) {
         assembly {
             function checkField(v) {
                 if iszero(lt(v, r)) {
@@ -141,6 +144,8 @@ contract Verifier {
                 g1_mulAccC(_pVk, IC8x, IC8y, calldataload(add(pubSignals, 224)))
                 
                 g1_mulAccC(_pVk, IC9x, IC9y, calldataload(add(pubSignals, 256)))
+                
+                g1_mulAccC(_pVk, IC10x, IC10y, calldataload(add(pubSignals, 288)))
                 
 
                 // -A
@@ -214,6 +219,8 @@ contract Verifier {
             checkField(calldataload(add(_pubSignals, 256)))
             
             checkField(calldataload(add(_pubSignals, 288)))
+            
+            checkField(calldataload(add(_pubSignals, 320)))
             
 
             // Validate all evaluations
