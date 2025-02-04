@@ -248,5 +248,7 @@ describe('AadhaarVerifier', function () {
     // compare expirationDate is issuedDate + 6 months(~15776640 seconds)
     const diff = witness[6] - witness[5];
     assert(BigInt(diff) === BigInt(15776640));
+    // compare issuer
+    assert(witness[10] === BigInt("12146166192964646439780403715116050536535442384123009131510511003232108502337"))
   })
 })

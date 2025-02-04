@@ -36,17 +36,17 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     // Public inputs
     signal input nullifierSeed;
     signal input signalHash;
+    signal input templateRoot;
+    signal input issuer;
 
     // Iden3 credentials input
     signal input revocationNonce;
     signal input credentialStatusID;
     signal input credentialSubjectID;
-    signal input issuer;
     signal input userID;
     signal input expirationTime;
 
     // Iden3 merkle tree root inputs
-    signal input templateRoot;
     signal input siblings[smtChanges][nLevels];
 
     signal output pubkeyHash;
