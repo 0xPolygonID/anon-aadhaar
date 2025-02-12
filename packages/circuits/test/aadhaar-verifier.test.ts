@@ -266,7 +266,7 @@ describe('AadhaarVerifier', function () {
     const witness = await circuit.calculateWitness(inputs)
     await circuit.checkConstraints(witness);
     // compare the results with the results of the go-core library
-    assert(witness[3] === BigInt("4495749602680683476365464685207358157516802663665444189094863568693702095171"));
+    assert(witness[3] === BigInt("6101503234763133044886983540801477015881946273839258285606754277016018090251"));
     assert(witness[4] === BigInt("18008128381428548624282039899106504460765785745693349906422544723715663713055"));
     // compare issuanceDate is equal to date from the QR code
     assert(

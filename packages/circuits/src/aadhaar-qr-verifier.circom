@@ -134,7 +134,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     signal signalHashSquare <== signalHash * signalHash;
 
     // The value was calculated using the go-iden3-core library
-    var i0 = 14343779637722578345558869867552708551014;
+    var i0 = 14444367388179446711342280945679493732379;
     component hI = Poseidon(4);
     hI.inputs[0] <== i0;
     hI.inputs[1] <== userID;
