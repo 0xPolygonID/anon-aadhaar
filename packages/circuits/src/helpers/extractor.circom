@@ -2,11 +2,11 @@ pragma circom 2.1.9;
 
 include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/bitify.circom";
+include "circomlib/circuits/poseidon.circom";
 include "@zk-email/circuits/utils/array.circom";
-include "@zk-email/circuits/utils/bytes.circom";
 include "../helpers/constants.circom";
 include "../utils/pack.circom";
-
+include "./bytes.circom";
 
 
 /**
@@ -47,8 +47,6 @@ There are no official spec docs for Aadhaar V2 available publicly, but the diffe
 - Last 256 bytes is the signature.
 **/
 
-
-
 /// @title ExtractAndPackAsInt
 /// @notice Helper function to extract data at a position to a single int (assumes data is less than 31 bytes)
 /// @dev This is only used for state now; but can work for district, name, etc if needed
@@ -61,12 +59,12 @@ template ExtractAndPackAsInt(maxDataLength, extractPosition) {
     signal input nDelimitedData[maxDataLength];
     signal input delimiterIndices[18];
 
-    signal output out;
+    signal output out[stringValuePackSize()];
     
     signal startDelimiterIndex <== delimiterIndices[extractPosition - 1];
     signal endDelimiterIndex <== delimiterIndices[extractPosition];
 
-    var extractMaxLength = maxFieldByteSize(); // Packing data only as a single int
+    var extractMaxLength = stringValuePackSize()* maxFieldByteSize(); // Packing data only as a single int
     var byteLength = extractMaxLength + 1;
     
     // Shift the data to the right till the the delimiter start
@@ -91,7 +89,7 @@ template ExtractAndPackAsInt(maxDataLength, extractPosition) {
         outInt.in[i] <== shiftedBytes[i + 1]; // +1 to skip the delimiter
     }
 
-    out <== outInt.out[0];
+    out <== outInt.out;
 }
 
 
@@ -184,28 +182,6 @@ template AgeExtractor(maxDataLength) {
     nDelimitedDataShiftedToDob <== shiftedBytes;
 }
 
-
-/// @title GenderExtractor
-/// @notice Extracts the Gender from the Aadhaar QR data and returns as Unix timestamp
-/// @input nDelimitedDataShiftedToDob[maxDataLength] - QR data where each delimiter is 255 * n 
-///     where n is order of the data shifted till DOB index
-/// @input startDelimiterIndex - index of the delimiter after
-/// @output out Single byte number representing gender
-template GenderExtractor(maxDataLength) {
-    signal input nDelimitedDataShiftedToDob[maxDataLength];
-
-    signal output out;
-
-    // Gender is always 1 byte and is immediate after DOB
-    // We use nDelimitedDataShiftedToDob and start after 10 + 1 bytes of DOB data
-    // This is more efficient than using ItemAtIndex thrice (for startIndex, gender, endIndex)
-    // saves around 14k constraints
-    nDelimitedDataShiftedToDob[11] === genderPosition() * 255;
-    nDelimitedDataShiftedToDob[13] === (genderPosition() + 1) * 255;
-
-    out <== nDelimitedDataShiftedToDob[12];
-}
-
 /// @title PinCodeExtractor
 /// @notice Extracts the pin code from the Aadhaar QR data
 /// @input nDelimitedData[maxDataLength] - QR data where each delimiter is 255 * n where n is order of the data
@@ -296,6 +272,7 @@ template QRDataExtractor(maxDataLength) {
     signal output ageAbove18;
     signal output gender;
     signal output state;
+    signal output name;
     signal output pinCode;
     signal output dateInteger;
     signal output photo[photoPackSize()];
@@ -351,9 +328,12 @@ template QRDataExtractor(maxDataLength) {
     // Extract gender
     // Age extractor returns data shifted till DOB. Since size for DOB data is fixed,
     // we can use the same shifted data to extract gender.
-    component genderExtractor = GenderExtractor(maxDataLength);
-    genderExtractor.nDelimitedDataShiftedToDob <== ageExtractor.nDelimitedDataShiftedToDob;
-    gender <== genderExtractor.out;
+    component genderExtractor = ExtractAndPackAsInt(maxDataLength, genderPosition());
+    genderExtractor.nDelimitedData <== nDelimitedData;
+    genderExtractor.delimiterIndices <== delimiterIndices;
+    component genderHasher = Poseidon(stringValuePackSize());
+    genderHasher.inputs <== genderExtractor.out;
+    gender <== genderHasher.out;
 
     // Extract PIN code
     component pinCodeExtractor = PinCodeExtractor(maxDataLength);
@@ -366,7 +346,17 @@ template QRDataExtractor(maxDataLength) {
     component stateExtractor = ExtractAndPackAsInt(maxDataLength, statePosition());
     stateExtractor.nDelimitedData <== nDelimitedData;
     stateExtractor.delimiterIndices <== delimiterIndices;
-    state <== stateExtractor.out;
+    component stateHasher = Poseidon(stringValuePackSize());
+    stateHasher.inputs <== stateExtractor.out;
+    state <== stateHasher.out;
+
+    // Extract name
+    component nameExtractor = ExtractAndPackAsInt(maxDataLength, namePosition());
+    nameExtractor.nDelimitedData <== nDelimitedData;
+    nameExtractor.delimiterIndices <== delimiterIndices;
+    component nameHasher = Poseidon(stringValuePackSize());
+    nameHasher.inputs <== nameExtractor.out;
+    name <== nameHasher.out;
 
     // Extract photo
     component photoExtractor = PhotoExtractor(maxDataLength);

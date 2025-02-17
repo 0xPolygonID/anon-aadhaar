@@ -40,3 +40,7 @@ function maxFieldByteSize() {
 function photoPackSize() {
   return 32;
 }
+
+function stringValuePackSize() {
+  return 16;
+}
