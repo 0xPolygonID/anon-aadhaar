@@ -121,6 +121,12 @@ template TimestampExtractor(maxDataLength) {
     timestamp <== dateToUnixTime.out - 19800; // 19800 is the offset for IST
 }
 
+template ReferenceIDExtractor(maxDataLength) {
+    signal input nDelimitedData[maxDataLength];
+    
+    signal output referenceID <== DigitBytesToInt(21)([nDelimitedData[5], nDelimitedData[6], nDelimitedData[7], nDelimitedData[8], nDelimitedData[9], nDelimitedData[10], nDelimitedData[11], nDelimitedData[12], nDelimitedData[13], nDelimitedData[14],  nDelimitedData[15], nDelimitedData[16],  nDelimitedData[17], nDelimitedData[18],  nDelimitedData[19], nDelimitedData[20], nDelimitedData[21], nDelimitedData[22], nDelimitedData[23], nDelimitedData[24], nDelimitedData[25]]);
+}
+
 
 /// @title AgeExtractor 
 /// @notice Extract date of birth from the Aadhaar QR data and returns as Unix timestamp
@@ -273,6 +279,11 @@ template QRDataExtractor(maxDataLength) {
     signal output gender;
     signal output state;
     signal output name;
+    signal output referenceID;
+    signal output house;
+    signal output street;
+    signal output VTC;
+    signal output district;
     signal output pinCode;
     signal output dateInteger;
     signal output photo[photoPackSize()];
@@ -357,6 +368,44 @@ template QRDataExtractor(maxDataLength) {
     component nameHasher = Poseidon(stringValuePackSize());
     nameHasher.inputs <== nameExtractor.out;
     name <== nameHasher.out;
+
+    // Extract referenceID 
+    // referenceID is nonNegativeInteger no need apply Poseidon
+    component referenceIDExtractor = ReferenceIDExtractor(maxDataLength);
+    referenceIDExtractor.nDelimitedData <== nDelimitedData;
+    referenceID <== referenceIDExtractor.referenceID;
+
+    // Extract district
+    component districtExtractor = ExtractAndPackAsInt(maxDataLength, districtPosition());
+    districtExtractor.nDelimitedData <== nDelimitedData;
+    districtExtractor.delimiterIndices <== delimiterIndices;
+    component districtHasher = Poseidon(stringValuePackSize());
+    districtHasher.inputs <== districtExtractor.out;
+    district <== districtHasher.out;
+
+    // Extract house
+    component houseExtractor = ExtractAndPackAsInt(maxDataLength, housePosition());
+    houseExtractor.nDelimitedData <== nDelimitedData;
+    houseExtractor.delimiterIndices <== delimiterIndices;
+    component houseHasher = Poseidon(stringValuePackSize());
+    houseHasher.inputs <== houseExtractor.out;
+    house <== houseHasher.out;
+
+    // Extract street
+    component streetExtractor = ExtractAndPackAsInt(maxDataLength, streetPosition());
+    streetExtractor.nDelimitedData <== nDelimitedData;
+    streetExtractor.delimiterIndices <== delimiterIndices;
+    component streetHasher = Poseidon(stringValuePackSize());
+    streetHasher.inputs <== streetExtractor.out;
+    street <== streetHasher.out;
+
+    // Extract VTC
+    component VTCExtractor = ExtractAndPackAsInt(maxDataLength, VTCPosition());
+    VTCExtractor.nDelimitedData <== nDelimitedData;
+    VTCExtractor.delimiterIndices <== delimiterIndices;
+    component VTCHasher = Poseidon(stringValuePackSize());
+    VTCHasher.inputs <== VTCExtractor.out;
+    VTC <== VTCHasher.out;
 
     // Extract photo
     component photoExtractor = PhotoExtractor(maxDataLength);

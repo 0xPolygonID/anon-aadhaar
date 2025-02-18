@@ -1,7 +1,6 @@
 pragma circom 2.1.9;
 
-
-function referenceIdPosition() {
+function referenceIDPosition() {
   return 2;
 }
 
@@ -19,12 +18,28 @@ function genderPosition() {
   return 5;
 }
 
+function districtPosition() {
+  return 7;
+}
+
+function housePosition() {
+  return 9;
+}
+
 function pinCodePosition() {
   return 11;
 }
 
 function statePosition() {
   return 13;
+}
+
+function streetPosition() {
+  return 14;
+}
+
+function VTCPosition() {
+  return 16;
 }
 
 function photoPosition() {

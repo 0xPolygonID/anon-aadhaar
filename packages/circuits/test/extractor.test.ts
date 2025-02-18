@@ -74,11 +74,31 @@ describe('Extractor', function () {
     assert(witness[5] === 9055566139599481731330446254307216178665393900469433627295807637695545779753n, 
       "Hash of name is not equal to golang Poseidon implementaion")
 
+    // referenceID
+    assert(witness[6] === 269720190308114407437n, 
+      "referenceID is not eqaul to expected value")
+
+    // house
+    assert(witness[7] === 21307040413404489796457661057970942411064135294977564665978619106881202994170n, 
+      "Hash of house is not equal to golang Poseidon implementaion")
+
+    // street
+    assert(witness[8] === 18578590251434254203041937612844700836665781819110456332910713380281474784556n, 
+      "Hash of street is not equal to golang Poseidon implementaion")
+
+    // VTC
+    assert(witness[9] === 8726738483307599143891573132470102439861870862414983691708906492398290392396n, 
+      "Hash of VTC is not equal to golang Poseidon implementaion")
+
+    // district
+    assert(witness[10] === 13127403770211297281556174201900816015171088207023989518614456084576402202937n, 
+      "Hash of district is not equal to golang Poseidon implementaion")
+
     // Pin code
-    assert(Number(witness[6]) === 110051)
+    assert(Number(witness[11]) === 110051)
 
     // Date of birth on integer format
-    assert(Number(witness[7]) === 19840101)
+    assert(Number(witness[12]) === 19840101)
 
     // Photo
     // Reconstruction of the photo bytes from packed ints and compare each byte
