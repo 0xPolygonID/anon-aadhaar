@@ -19,7 +19,6 @@ function computeIntChunkLength(byteLength) {
 template PackBytes(maxBytes) {
     var packSize = MAX_BYTES_IN_FIELD();
     var maxInts = computeIntChunkLength(maxBytes);
-    log("maxInts = ", maxInts);
 
     signal input in[maxBytes];
     signal output out[maxInts];
@@ -57,4 +56,18 @@ template DigitBytesToInt(n) {
     }
 
     out <== sums[n];
+}
+
+template BytesConverter(n) {
+    signal input in[n];
+    signal output out[n];
+    
+    component is255[n];
+    for (var i = 0; i < n; i++) {
+        is255[i] = IsEqual();
+        is255[i].in[0] <== 255;
+        is255[i].in[1] <== in[i];
+
+        out[i] <== is255[i].out * (32 - in[i]) + in[i];
+    }
 }

@@ -83,12 +83,43 @@ template ExtractAndPackAsInt(maxDataLength, extractPosition) {
     endDelimiterSelector.index <== endDelimiterIndex;
     endDelimiterSelector.out === (extractPosition + 1) * 255;
 
+    component outInt = PackBytes(extractMaxLength);
+    for (var i = 0; i < extractMaxLength; i ++) {
+        outInt.in[i] <== shiftedBytes[i+1]; // +1 to skip the delimiter
+    }
+
+    out <== outInt.out;
+}
+
+template ExtractAddressAndPackAsInts(maxDataLength) {
+    signal input nDelimitedData[maxDataLength];
+    signal input delimiterIndices[18];
+
+    signal output out[stringValuePackSize()];
+    
+    var startAddressIndex = 5;
+    var endAddressIndex = 16;
+    signal startDelimiterIndex <== delimiterIndices[startAddressIndex];
+    signal endDelimiterIndex <== delimiterIndices[endAddressIndex];
+
+    var extractMaxLength = stringValuePackSize()* maxFieldByteSize();
+    var byteLength = extractMaxLength + 1;
+    
+    component subArraySelector = SelectSubArray(maxDataLength, byteLength);
+    subArraySelector.in <== nDelimitedData;
+    subArraySelector.startIndex <== startDelimiterIndex; // We want delimiter to be the first byte
+    subArraySelector.length <== endDelimiterIndex - startDelimiterIndex;
+    
+    // We need convert all 255 byte to 32 (space). Since utf8 encoding does not support byte 255
+    component byteConvertor = BytesConverter(byteLength);
+    byteConvertor.in <== subArraySelector.out;
+
     // Pack byte[] to int[] where int is field element which take up to 31 bytes
     component outInt = PackBytes(extractMaxLength);
     for (var i = 0; i < extractMaxLength; i ++) {
-        outInt.in[i] <== shiftedBytes[i + 1]; // +1 to skip the delimiter
+        outInt.in[i] <== byteConvertor.out[i+1]; // +1 to skip the delimiter
     }
-
+    
     out <== outInt.out;
 }
 
@@ -188,37 +219,6 @@ template AgeExtractor(maxDataLength) {
     nDelimitedDataShiftedToDob <== shiftedBytes;
 }
 
-/// @title PinCodeExtractor
-/// @notice Extracts the pin code from the Aadhaar QR data
-/// @input nDelimitedData[maxDataLength] - QR data where each delimiter is 255 * n where n is order of the data
-/// @input startDelimiterIndex - index of the delimiter after which the pin code start
-/// @input endDelimiterIndex - index of the delimiter up to which the pin code is present
-/// @output out - pinCode as integer
-template PinCodeExtractor(maxDataLength) {
-    signal input nDelimitedData[maxDataLength];
-    signal input startDelimiterIndex;
-    signal input endDelimiterIndex;
-
-    signal output out;
-
-    var pinCodeMaxLength = 6;
-    var byteLength = pinCodeMaxLength + 2; // 2 delimiters
-
-    component subArraySelector = SelectSubArray(maxDataLength, byteLength);
-    subArraySelector.in <== nDelimitedData;
-    subArraySelector.startIndex <== startDelimiterIndex;
-    subArraySelector.length <== endDelimiterIndex - startDelimiterIndex + 1;
-
-    signal shiftedBytes[byteLength] <== subArraySelector.out;
-
-    // Assert delimiters around the data is correct
-    shiftedBytes[0] === pinCodePosition() * 255;
-    shiftedBytes[7] === (pinCodePosition() + 1) * 255;
-
-    out <== DigitBytesToInt(6)([shiftedBytes[1], shiftedBytes[2], shiftedBytes[3], shiftedBytes[4], shiftedBytes[5], shiftedBytes[6]]);
-}
-
-
 /// @title PhotoExtractor
 /// @notice Extracts the photo from the Aadhaar QR data
 /// @dev Not reusing ExtractAndPackAsInt as there is no endDelimiter (photo is last item)
@@ -275,17 +275,11 @@ template QRDataExtractor(maxDataLength) {
 
     // signal output name;
     signal output timestamp;
-    signal output ageAbove18;
     signal output gender;
-    signal output state;
     signal output name;
     signal output referenceID;
-    signal output house;
-    signal output street;
-    signal output VTC;
-    signal output district;
-    signal output pinCode;
-    signal output dateInteger;
+    signal output address;
+    signal output dob;
     signal output photo[photoPackSize()];
 
     // Create `nDelimitedData` - same as `data` but each delimiter is replaced with n * 255
@@ -319,22 +313,6 @@ template QRDataExtractor(maxDataLength) {
     component timestampExtractor = TimestampExtractor(maxDataLength);
     timestampExtractor.nDelimitedData <== nDelimitedData;
     timestamp <== timestampExtractor.timestamp;
-   
-    // Extract age - and calculate if above 18
-    // We use the year, month, day from the timestamp as the current time to calculate the age
-    // This wont be precise but avoid the need for additional `currentTime` input
-    // User can generate fresh QR for accuracy if needed (on their 18th birthday)
-    component ageExtractor = AgeExtractor(maxDataLength);
-    ageExtractor.nDelimitedData <== nDelimitedData;
-    ageExtractor.startDelimiterIndex <== delimiterIndices[dobPosition() - 1];
-    ageExtractor.currentYear <== timestampExtractor.year;
-    ageExtractor.currentMonth <== timestampExtractor.month;
-    ageExtractor.currentDay <== timestampExtractor.day;
-    
-    component ageAbove18Checker = GreaterThan(8);
-    ageAbove18Checker.in[0] <== ageExtractor.age;
-    ageAbove18Checker.in[1] <== 18;
-    ageAbove18 <== ageAbove18Checker.out;
 
     // Extract gender
     // Age extractor returns data shifted till DOB. Since size for DOB data is fixed,
@@ -345,21 +323,6 @@ template QRDataExtractor(maxDataLength) {
     component genderHasher = Poseidon(stringValuePackSize());
     genderHasher.inputs <== genderExtractor.out;
     gender <== genderHasher.out;
-
-    // Extract PIN code
-    component pinCodeExtractor = PinCodeExtractor(maxDataLength);
-    pinCodeExtractor.nDelimitedData <== nDelimitedData;
-    pinCodeExtractor.startDelimiterIndex <== delimiterIndices[pinCodePosition() - 1];
-    pinCodeExtractor.endDelimiterIndex <== delimiterIndices[pinCodePosition()];
-    pinCode <== pinCodeExtractor.out;
-
-    // Extract state
-    component stateExtractor = ExtractAndPackAsInt(maxDataLength, statePosition());
-    stateExtractor.nDelimitedData <== nDelimitedData;
-    stateExtractor.delimiterIndices <== delimiterIndices;
-    component stateHasher = Poseidon(stringValuePackSize());
-    stateHasher.inputs <== stateExtractor.out;
-    state <== stateHasher.out;
 
     // Extract name
     component nameExtractor = ExtractAndPackAsInt(maxDataLength, namePosition());
@@ -375,37 +338,29 @@ template QRDataExtractor(maxDataLength) {
     referenceIDExtractor.nDelimitedData <== nDelimitedData;
     referenceID <== referenceIDExtractor.referenceID;
 
-    // Extract district
-    component districtExtractor = ExtractAndPackAsInt(maxDataLength, districtPosition());
-    districtExtractor.nDelimitedData <== nDelimitedData;
-    districtExtractor.delimiterIndices <== delimiterIndices;
-    component districtHasher = Poseidon(stringValuePackSize());
-    districtHasher.inputs <== districtExtractor.out;
-    district <== districtHasher.out;
+    // Extract age - and calculate if above 18
+    // We use the year, month, day from the timestamp as the current time to calculate the age
+    // This wont be precise but avoid the need for additional `currentTime` input
+    // User can generate fresh QR for accuracy if needed (on their 18th birthday)
+    component ageExtractor = AgeExtractor(maxDataLength);
+    ageExtractor.nDelimitedData <== nDelimitedData;
+    ageExtractor.startDelimiterIndex <== delimiterIndices[dobPosition() - 1];
+    ageExtractor.currentYear <== timestampExtractor.year;
+    ageExtractor.currentMonth <== timestampExtractor.month;
+    ageExtractor.currentDay <== timestampExtractor.day;
 
-    // Extract house
-    component houseExtractor = ExtractAndPackAsInt(maxDataLength, housePosition());
-    houseExtractor.nDelimitedData <== nDelimitedData;
-    houseExtractor.delimiterIndices <== delimiterIndices;
-    component houseHasher = Poseidon(stringValuePackSize());
-    houseHasher.inputs <== houseExtractor.out;
-    house <== houseHasher.out;
+    // Return YYYYMMDD format for data integer representation
+    signal temp1, temp2;
+    temp1 <== ageExtractor.year * 10000;
+    temp2 <== ageExtractor.month * 100;
+    dob <== temp1 + temp2 + ageExtractor.day;
 
-    // Extract street
-    component streetExtractor = ExtractAndPackAsInt(maxDataLength, streetPosition());
-    streetExtractor.nDelimitedData <== nDelimitedData;
-    streetExtractor.delimiterIndices <== delimiterIndices;
-    component streetHasher = Poseidon(stringValuePackSize());
-    streetHasher.inputs <== streetExtractor.out;
-    street <== streetHasher.out;
-
-    // Extract VTC
-    component VTCExtractor = ExtractAndPackAsInt(maxDataLength, VTCPosition());
-    VTCExtractor.nDelimitedData <== nDelimitedData;
-    VTCExtractor.delimiterIndices <== delimiterIndices;
-    component VTCHasher = Poseidon(stringValuePackSize());
-    VTCHasher.inputs <== VTCExtractor.out;
-    VTC <== VTCHasher.out;
+    component AddressExtractor = ExtractAddressAndPackAsInts(maxDataLength);
+    AddressExtractor.nDelimitedData <== data;
+    AddressExtractor.delimiterIndices <== delimiterIndices;
+    component AddressHasher = Poseidon(stringValuePackSize());
+    AddressHasher.inputs <== AddressExtractor.out;
+    address <== AddressHasher.out;
 
     // Extract photo
     component photoExtractor = PhotoExtractor(maxDataLength);
@@ -413,10 +368,4 @@ template QRDataExtractor(maxDataLength) {
     photoExtractor.startDelimiterIndex <== delimiterIndices[photoPosition() - 1];
     photoExtractor.endIndex <== qrDataPaddedLength - 1;
     photo <== photoExtractor.out;
-
-    // Return YYYYMMDD format for data integer representation
-    signal temp1, temp2;
-    temp1 <== ageExtractor.year * 10000;
-    temp2 <== ageExtractor.month * 100;
-    dateInteger <== temp1 + temp2 + ageExtractor.day;
 }

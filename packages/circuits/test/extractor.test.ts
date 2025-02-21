@@ -59,46 +59,24 @@ describe('Extractor', function () {
         new Date('2019-03-08T05:30:00.000Z').getTime(),
     )
 
-    // Age above 18
-    assert(Number(witness[2]) === 1)
-
     // Gender
-    assert(witness[3] === 4366613503740245542741816499068547859478657796760861141829344679607332353738n,
-      "Hash of gender is not equal to golang Poseidon implementaion")
-
-    // State
-    assert(witness[4] === 11341710477167464350850956657901972494374927172721355135935241763297596075948n, 
-      "Hash of state is not equal to golang Poseidon implementaion")
+    assert(witness[2] === 4366613503740245542741816499068547859478657796760861141829344679607332353738n,
+    "Hash of gender is not equal to golang Poseidon implementaion")
 
     // Name
-    assert(witness[5] === 9055566139599481731330446254307216178665393900469433627295807637695545779753n, 
+    assert(witness[3] === 9055566139599481731330446254307216178665393900469433627295807637695545779753n, 
       "Hash of name is not equal to golang Poseidon implementaion")
 
-    // referenceID
-    assert(witness[6] === 269720190308114407437n, 
+    // // referenceID
+    assert(witness[4] === 269720190308114407437n, 
       "referenceID is not eqaul to expected value")
 
-    // house
-    assert(witness[7] === 21307040413404489796457661057970942411064135294977564665978619106881202994170n, 
-      "Hash of house is not equal to golang Poseidon implementaion")
-
-    // street
-    assert(witness[8] === 18578590251434254203041937612844700836665781819110456332910713380281474784556n, 
-      "Hash of street is not equal to golang Poseidon implementaion")
-
-    // VTC
-    assert(witness[9] === 8726738483307599143891573132470102439861870862414983691708906492398290392396n, 
-      "Hash of VTC is not equal to golang Poseidon implementaion")
-
-    // district
-    assert(witness[10] === 13127403770211297281556174201900816015171088207023989518614456084576402202937n, 
-      "Hash of district is not equal to golang Poseidon implementaion")
-
-    // Pin code
-    assert(Number(witness[11]) === 110051)
+    // address
+    assert(witness[5] === 2727536908092799094274850447014528629459829531793846928656959765346782168490n,
+      "Hash of address is not equal to golang Poseidon implementaion")
 
     // Date of birth on integer format
-    assert(Number(witness[12]) === 19840101)
+    assert(Number(witness[6]) === 19840101)
 
     // Photo
     // Reconstruction of the photo bytes from packed ints and compare each byte
