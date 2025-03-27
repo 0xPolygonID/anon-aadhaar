@@ -5,3 +5,4 @@ dist/
 .npmrc
 /build
 /artifacts
+packages/circuits/test/aadhaar-verifier.test.ts

@@ -152,13 +152,6 @@ template TimestampExtractor(maxDataLength) {
     timestamp <== dateToUnixTime.out - 19800; // 19800 is the offset for IST
 }
 
-template ReferenceIDExtractor(maxDataLength) {
-    signal input nDelimitedData[maxDataLength];
-    
-    signal output referenceID <== DigitBytesToInt(21)([nDelimitedData[5], nDelimitedData[6], nDelimitedData[7], nDelimitedData[8], nDelimitedData[9], nDelimitedData[10], nDelimitedData[11], nDelimitedData[12], nDelimitedData[13], nDelimitedData[14],  nDelimitedData[15], nDelimitedData[16],  nDelimitedData[17], nDelimitedData[18],  nDelimitedData[19], nDelimitedData[20], nDelimitedData[21], nDelimitedData[22], nDelimitedData[23], nDelimitedData[24], nDelimitedData[25]]);
-}
-
-
 /// @title AgeExtractor 
 /// @notice Extract date of birth from the Aadhaar QR data and returns as Unix timestamp
 /// @notice The timestamp will correspond to 00:00 of the date in IST timezone
@@ -334,9 +327,12 @@ template QRDataExtractor(maxDataLength) {
 
     // Extract referenceID 
     // referenceID is nonNegativeInteger no need apply Poseidon
-    component referenceIDExtractor = ReferenceIDExtractor(maxDataLength);
+    component referenceIDExtractor = ExtractAndPackAsInt(maxDataLength, referenceIDPosition());
     referenceIDExtractor.nDelimitedData <== nDelimitedData;
-    referenceID <== referenceIDExtractor.referenceID;
+    referenceIDExtractor.delimiterIndices <== delimiterIndices;
+    component referenceIDHash = Poseidon(stringValuePackSize());
+    referenceIDHash.inputs <== referenceIDExtractor.out;
+    referenceID <== referenceIDHash.out;
 
     // Extract age - and calculate if above 18
     // We use the year, month, day from the timestamp as the current time to calculate the age

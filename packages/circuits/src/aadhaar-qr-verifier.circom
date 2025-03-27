@@ -58,17 +58,19 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
 
     // keys to update
     var keysToUpdate[smtChanges] = [
-        6455913366592666201648701127743652596856200808320030661139737215331945226446, // address
-        15797492950276814745920327875668044332806138770863520646292871331376334615157, // birthday
-        11003971958055069902221764257982759506273458969119534962957641546385029132859, // gender
-        20597968245842623707356256066033564898107884665586462726478961192187480712157, // name
-        10341739212269954293228123764665245031329949711448609200469277569519636549535, // referenceID
-        18652354674254268839450839640508993614932212252620036777561285260846450401086, // revocationNonce
+        11718818292802126417463134214212976082628052906423225153106612749610200183413, // credentialSubject.dateOfBirth
+        396948171793807448670779079530437970230319997763427297159364741404168161086, // credentialSubject.firstName
+        1540185022550171417964535586735569210235830901649938832989137234790618138161, // credentialSubject.fullName
+        8773407965838008861275811595321738876343347548748386392157545551632667424559, // credentialSubject.gender
+        11665818515976908772146086926627988937767272157525043131077389782866401822622, // credentialSubject.govermentIdentifier
+        20378936560477526294120993552723258097975107008215368308010022877877877266947, // credentialSubject.governmentIdentifierType
+        18652354674254268839450839640508993614932212252620036777561285260846450401086, // credentialStatus.revocationNonce
+        2114546039662959054024607258894575760077918479747771271201277979047211711479, // credentialSubject.addresses
         11896622783611378286548274235251973588039499084629981048616800443645803129554, // credentialStatus.id
         4792130079462681165428511201253235850015648352883240577315026477780493110675, // credentialSubject.id
-        13483382060079230067188057675928039600565406666878111320562435194759310415773, // expirationDate
-        8713837106709436881047310678745516714551061952618778897121563913918335939585, // issuanceDate
-        5940025296598751562822259677636111513267244048295724788691376971035167813215 // issuer
+        13483382060079230067188057675928039600565406666878111320562435194759310415773, // expirationDate.id
+        8713837106709436881047310678745516714551061952618778897121563913918335939585, // issuanceDate.id
+        5940025296598751562822259677636111513267244048295724788691376971035167813215 // issuer.id
     ];
 
     // Assert `qrDataPaddedLength` fits in `ceil(log2(maxDataLength))`
@@ -99,6 +101,23 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     // use the time of signing as the date of issue
     issuanceDate <== qrDataExtractor.timestamp;
     expirationDate <== issuanceDate + expirationTime;
+
+    /* // For debugging
+    log(qrDataExtractor.dob);
+    log(qrDataExtractor.name);
+    log(qrDataExtractor.name);
+    log(qrDataExtractor.gender);
+    log(qrDataExtractor.referenceID);
+    log("9625374645547036629006936456349235401907107363945660607867283679088689283602");
+    log(revocationNonce);
+    log(qrDataExtractor.address);
+    log(credentialStatusID);
+    log(credentialSubjectID);
+    log(expirationDate * 1000000000);
+    log(issuanceDate * 1000000000);
+    log(issuer);
+    */
+
     /*
         expirationDate and issuanceDate represent the timestamp in seconds. 
         The Merkalization library works with timestamps in nanoseconds. 
@@ -106,12 +125,14 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     */
     // we need to keep the same sequence as update keys
     var valuesToUpdate[smtChanges] = [
-        qrDataExtractor.address, // address
         qrDataExtractor.dob, // birthday
+        qrDataExtractor.name, // firstName
+        qrDataExtractor.name, // fullName
         qrDataExtractor.gender, // gender
-        qrDataExtractor.name, // name
-        qrDataExtractor.referenceID, // referenceID
+        qrDataExtractor.referenceID, // govermentIdentifier
+        9625374645547036629006936456349235401907107363945660607867283679088689283602, // govermentIdentifierType poseidon16("other")
         revocationNonce, // revocationNonce
+        qrDataExtractor.address, // address
         credentialStatusID, // credentialStatus.id
         credentialSubjectID, // credentialSubject.id
         expirationDate * 1000000000, // expirationDate
@@ -136,7 +157,7 @@ template AadhaarQRVerifier(n, k, maxDataLength, nLevels, smtChanges) {
     signal signalHashSquare <== signalHash * signalHash;
 
     // The value was calculated using the go-iden3-core library
-    var i0 = 14315910854760196829674113508362607909266;
+    var i0 = 14477845612645806574444905890781353993111;
     component hI = Poseidon(4);
     hI.inputs[0] <== i0;
     hI.inputs[1] <== userID;
